@@ -31,14 +31,6 @@ export interface Exercise {
   context?: string;
 }
 
-export interface QuizState {
-  milestoneId: string;
-  exerciseIndex: number;
-  answers: Record<string, string | string[]>;
-  status: 'idle' | 'correct' | 'incorrect';
-  submitted: boolean;
-}
-
 export interface LearningModule {
   id: string;
   name: string;
@@ -54,6 +46,13 @@ export interface WeakSpot {
   prompt: string;
   count: number;
   lastAttempt: string;
+}
+
+export interface AvatarConfig {
+  base: 'owl' | 'cat' | 'dog' | 'fox' | 'penguin';
+  color: string;
+  accessory: 'none' | 'glasses' | 'hat' | 'bow' | 'crown';
+  expression: 'happy' | 'excited' | 'neutral' | 'determined';
 }
 
 export interface AppState {
@@ -74,6 +73,16 @@ export interface AppState {
   weakSpots: WeakSpot[];
   hasSeenOnboarding: boolean;
   userId: string | null;
+  avatar: AvatarConfig;
+  preTestResults: Record<string, number>;
+}
+
+export interface QuizState {
+  milestoneId: string;
+  exerciseIndex: number;
+  answers: Record<string, string | string[]>;
+  status: 'idle' | 'correct' | 'incorrect';
+  submitted: boolean;
 }
 
 export interface GeminiResponse {

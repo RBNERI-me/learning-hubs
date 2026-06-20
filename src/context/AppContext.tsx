@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import type { AppState, LearningModule, WeakSpot, Milestone } from '../types';
+import type { AppState, LearningModule, WeakSpot, Milestone, AvatarConfig } from '../types';
 import { defaultModules } from '../data/defaultModules';
 import { getClient, SupabaseClient } from '../lib/supabase';
 
@@ -14,6 +14,13 @@ function getSupabase() {
   }
   return supabaseClient;
 }
+
+const defaultAvatar: AvatarConfig = {
+  base: 'owl',
+  color: '#58CC02',
+  accessory: 'none',
+  expression: 'happy',
+};
 
 async function loadFromSupabase(userId: string): Promise<Partial<AppState> | null> {
   try {
@@ -32,6 +39,8 @@ async function loadFromSupabase(userId: string): Promise<Partial<AppState> | nul
       completedAnswers: data.completed_answers ? JSON.parse(data.completed_answers) : [],
       weakSpots: data.weak_spots ? JSON.parse(data.weak_spots) : [],
       hasSeenOnboarding: data.has_seen_onboarding ?? false,
+      avatar: data.avatar ? JSON.parse(data.avatar) : defaultAvatar,
+      preTestResults: data.pre_test_results ? JSON.parse(data.pre_test_results) : {},
     };
   } catch {
     return null;
@@ -54,6 +63,8 @@ async function saveToSupabase(userId: string, state: AppState) {
       completed_answers: JSON.stringify(state.completedAnswers),
       weak_spots: JSON.stringify(state.weakSpots),
       has_seen_onboarding: state.hasSeenOnboarding,
+      avatar: JSON.stringify(state.avatar),
+      pre_test_results: JSON.stringify(state.preTestResults),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
   } catch { /* ignore */ }
@@ -80,6 +91,8 @@ const getInitialState = (): AppState => {
         weakSpots: parsed.weakSpots ?? [],
         hasSeenOnboarding: parsed.hasSeenOnboarding ?? false,
         userId: parsed.userId ?? null,
+        avatar: parsed.avatar ?? defaultAvatar,
+        preTestResults: parsed.preTestResults ?? {},
       };
     }
   } catch { /* ignore */ }
@@ -101,6 +114,8 @@ const getInitialState = (): AppState => {
     weakSpots: [],
     hasSeenOnboarding: false,
     userId: null,
+    avatar: defaultAvatar,
+    preTestResults: {},
   };
 };
 
@@ -113,10 +128,16 @@ type Action =
   | { type: 'FINISH_MILESTONE' }
   | { type: 'ADD_MODULE'; payload: LearningModule }
   | { type: 'UPDATE_MODULE'; payload: { moduleId: string; milestones: Milestone[] } }
+  | { type: 'DELETE_MODULE'; payload: string }
+  | { type: 'EDIT_MODULE'; payload: { moduleId: string; updates: Partial<LearningModule> } }
+  | { type: 'DELETE_MILESTONE'; payload: { moduleId: string; milestoneId: string } }
+  | { type: 'EDIT_MILESTONE'; payload: { moduleId: string; milestoneId: string; updates: Partial<Milestone> } }
   | { type: 'RECORD_WEAK_SPOT'; payload: WeakSpot }
   | { type: 'RESET_QUIZ' }
   | { type: 'SET_USER_ID'; payload: string }
-  | { type: 'COMPLETE_ONBOARDING' };
+  | { type: 'COMPLETE_ONBOARDING' }
+  | { type: 'SET_AVATAR'; payload: AvatarConfig }
+  | { type: 'SET_PRETEST_RESULT'; payload: { moduleId: string; score: number } };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -222,6 +243,49 @@ function reducer(state: AppState, action: Action): AppState {
         modules: state.modules.map(m => m.id === action.payload.moduleId ? { ...m, milestones: action.payload.milestones } : m),
       };
     }
+    case 'DELETE_MODULE': {
+      const filtered = state.modules.filter(m => m.id !== action.payload);
+      const newActive = filtered.length > 0 ? filtered[0].id : '';
+      return {
+        ...state,
+        modules: filtered,
+        activeModule: state.activeModule === action.payload ? newActive : state.activeModule,
+      };
+    }
+    case 'EDIT_MODULE': {
+      return {
+        ...state,
+        modules: state.modules.map(m =>
+          m.id === action.payload.moduleId ? { ...m, ...action.payload.updates } : m
+        ),
+      };
+    }
+    case 'DELETE_MILESTONE': {
+      return {
+        ...state,
+        modules: state.modules.map(m => {
+          if (m.id !== action.payload.moduleId) return m;
+          return {
+            ...m,
+            milestones: m.milestones.filter(ms => ms.id !== action.payload.milestoneId),
+          };
+        }),
+      };
+    }
+    case 'EDIT_MILESTONE': {
+      return {
+        ...state,
+        modules: state.modules.map(m => {
+          if (m.id !== action.payload.moduleId) return m;
+          return {
+            ...m,
+            milestones: m.milestones.map(ms =>
+              ms.id === action.payload.milestoneId ? { ...ms, ...action.payload.updates } : ms
+            ),
+          };
+        }),
+      };
+    }
     case 'RECORD_WEAK_SPOT': {
       const existing = state.weakSpots.find(w => w.exerciseId === action.payload.exerciseId);
       const weakSpots = existing
@@ -237,6 +301,15 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'COMPLETE_ONBOARDING': {
       return { ...state, hasSeenOnboarding: true };
+    }
+    case 'SET_AVATAR': {
+      return { ...state, avatar: action.payload };
+    }
+    case 'SET_PRETEST_RESULT': {
+      return {
+        ...state,
+        preTestResults: { ...state.preTestResults, [action.payload.moduleId]: action.payload.score },
+      };
     }
     default:
       return state;
@@ -260,6 +333,10 @@ interface ContextValue {
   finishMilestone: () => void;
   addModule: (module: LearningModule) => void;
   updateModule: (moduleId: string, milestones: Milestone[]) => void;
+  deleteModule: (moduleId: string) => void;
+  editModule: (moduleId: string, updates: Partial<LearningModule>) => void;
+  deleteMilestone: (moduleId: string, milestoneId: string) => void;
+  editMilestone: (moduleId: string, milestoneId: string, updates: Partial<Milestone>) => void;
   resetQuiz: () => void;
   setView: (view: AppState['activeView']) => void;
   setActiveModule: (id: string) => void;
@@ -270,6 +347,8 @@ interface ContextValue {
   addModuleAfterCompletion: (module: LearningModule) => void;
   recordWeakSpot: (spot: WeakSpot) => void;
   completeOnboarding: () => void;
+  setAvatar: (avatar: AvatarConfig) => void;
+  setPreTestResult: (moduleId: string, score: number) => void;
 }
 
 const AppContext = createContext<ContextValue | null>(null);
@@ -285,7 +364,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (state.userId) {
       saveToSupabase(state.userId, state);
     }
-  }, [state.userId, state.xp, state.streak, state.gems, state.crowns, state.activeModule, state.modules, state.completedAnswers, state.weakSpots, state.hasSeenOnboarding]);
+  }, [state.userId, state.xp, state.streak, state.gems, state.crowns, state.hearts, state.activeModule, state.modules, state.completedAnswers, state.weakSpots, state.hasSeenOnboarding, state.avatar, state.preTestResults]);
 
   useEffect(() => {
     if (state.lastActiveDate !== today) {
@@ -341,6 +420,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'UPDATE_MODULE', payload: { moduleId, milestones } });
   }, []);
 
+  const deleteModule = useCallback((moduleId: string) => {
+    dispatch({ type: 'DELETE_MODULE', payload: moduleId });
+  }, []);
+
+  const editModule = useCallback((moduleId: string, updates: Partial<LearningModule>) => {
+    dispatch({ type: 'EDIT_MODULE', payload: { moduleId, updates } });
+  }, []);
+
+  const deleteMilestone = useCallback((moduleId: string, milestoneId: string) => {
+    dispatch({ type: 'DELETE_MILESTONE', payload: { moduleId, milestoneId } });
+  }, []);
+
+  const editMilestone = useCallback((moduleId: string, milestoneId: string, updates: Partial<Milestone>) => {
+    dispatch({ type: 'EDIT_MILESTONE', payload: { moduleId, milestoneId, updates } });
+  }, []);
+
   const resetQuiz = useCallback(() => {
     dispatch({ type: 'RESET_QUIZ' });
   }, []);
@@ -381,6 +476,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'COMPLETE_ONBOARDING' });
   }, []);
 
+  const setAvatar = useCallback((avatar: AvatarConfig) => {
+    dispatch({ type: 'SET_AVATAR', payload: avatar });
+  }, []);
+
+  const setPreTestResult = useCallback((moduleId: string, score: number) => {
+    dispatch({ type: 'SET_PRETEST_RESULT', payload: { moduleId, score } });
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -393,6 +496,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         finishMilestone,
         addModule,
         updateModule,
+        deleteModule,
+        editModule,
+        deleteMilestone,
+        editMilestone,
         resetQuiz,
         setView,
         setActiveModule,
@@ -403,6 +510,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addModuleAfterCompletion,
         recordWeakSpot,
         completeOnboarding,
+        setAvatar,
+        setPreTestResult,
       }}
     >
       {children}
