@@ -26,6 +26,7 @@ async function loadFromSupabase(userId: string): Promise<Partial<AppState> | nul
       lastActiveDate: data.last_active_date ?? today,
       gems: data.gems ?? 0,
       crowns: data.crowns ?? 0,
+      hearts: data.hearts ?? 5,
       activeModule: data.active_module ?? 'english-impromptu',
       modules: data.modules ? JSON.parse(data.modules) : undefined,
       completedAnswers: data.completed_answers ? JSON.parse(data.completed_answers) : [],
@@ -47,6 +48,7 @@ async function saveToSupabase(userId: string, state: AppState) {
       last_active_date: state.lastActiveDate,
       gems: state.gems,
       crowns: state.crowns,
+      hearts: state.hearts,
       active_module: state.activeModule,
       modules: JSON.stringify(state.modules),
       completed_answers: JSON.stringify(state.completedAnswers),
@@ -73,6 +75,7 @@ const getInitialState = (): AppState => {
         modules: [...merged, ...custom],
         gems: parsed.gems ?? 0,
         crowns: parsed.crowns ?? 0,
+        hearts: parsed.hearts ?? 5,
         completedAnswers: parsed.completedAnswers ?? [],
         weakSpots: parsed.weakSpots ?? [],
         hasSeenOnboarding: parsed.hasSeenOnboarding ?? false,
@@ -93,6 +96,7 @@ const getInitialState = (): AppState => {
     modules: [...defaultModules],
     gems: 0,
     crowns: 0,
+    hearts: 5,
     completedAnswers: [],
     weakSpots: [],
     hasSeenOnboarding: false,
@@ -149,10 +153,12 @@ function reducer(state: AppState, action: Action): AppState {
       const correct = action.payload.correct;
       const newXp = correct ? state.xp + 10 : state.xp;
       const newGems = correct ? state.gems + 1 : state.gems;
+      const newHearts = correct ? Math.min(state.hearts + 1, 5) : Math.max(state.hearts - 1, 0);
       return {
         ...state,
         xp: newXp,
         gems: newGems,
+        hearts: newHearts,
         quiz: {
           ...state.quiz,
           status: correct ? 'correct' : 'incorrect',

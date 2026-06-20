@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Lock, Check, Star, Crown, Sparkles, ChevronDown } from 'lucide-react';
+import { Lock, Check, Star, Crown, Sparkles, ChevronDown, Flag, Trophy, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ModuleCompleteModal from './ModuleCompleteModal';
 
 const unitNames: Record<string, string> = {
-  u1: 'Unit 1',
-  u2: 'Unit 2',
-  u3: 'Unit 3',
-  u4: 'Unit 4',
+  u1: 'Section 1',
+  u2: 'Section 2',
+  u3: 'Section 3',
+  u4: 'Section 4',
 };
 
 const unitColors: Record<string, string> = {
@@ -24,6 +24,13 @@ const unitBgColors: Record<string, string> = {
   u3: '#fff0d4',
   u4: '#eec3ff',
 };
+
+// Floating decorative elements along the path
+const floatingDecorations = [
+  { icon: Zap, color: '#FFC800', size: 16, offset: { x: -40, y: 20 } },
+  { icon: Star, color: '#FF9600', size: 14, offset: { x: 50, y: -10 } },
+  { icon: Crown, color: '#CE82FF', size: 18, offset: { x: -30, y: 60 } },
+];
 
 export default function LearnTree() {
   const { state, startQuiz } = useApp();
@@ -45,37 +52,44 @@ export default function LearnTree() {
 
   return (
     <div className="flex flex-col items-center gap-0 py-6">
-      {/* Module Header */}
+      {/* Module Header - Duolingo style */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-6 flex flex-col items-center w-full max-w-sm"
+        className="mb-8 flex flex-col items-center w-full max-w-md"
       >
         <div className="relative mb-3">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-extrabold"
-            style={{ backgroundColor: module.color, boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}
+          <motion.div
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-extrabold"
+            style={{
+              backgroundColor: module.color,
+              boxShadow: `0 6px 24px ${module.color}40`,
+            }}
           >
-            <Star size={32} fill="#fff" />
-          </div>
-          <div
-            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-            style={{ backgroundColor: 'var(--accent-yellow)' }}
+            <Star size={40} fill="#fff" />
+          </motion.div>
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.3, type: 'spring' }}
+            className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-extrabold border-2 border-white"
+            style={{ backgroundColor: 'var(--yellow)' }}
           >
             {completedCount}
-          </div>
+          </motion.div>
         </div>
-        <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
+        <h1 className="text-3xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
           {module.name}
         </h1>
-        <div className="w-full mt-2">
-          <div className="flex items-center justify-between text-xs font-bold uppercase mb-1" style={{ color: 'var(--text-muted)' }}>
+        <div className="w-full mt-3 px-4">
+          <div className="flex items-center justify-between text-xs font-bold uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
             <span>Progress</span>
             <span>{completedCount}/{module.milestones.length}</span>
           </div>
-          <div className="h-3 rounded-full w-full overflow-hidden" style={{ backgroundColor: 'var(--border-color)' }}>
+          <div className="duo-progress">
             <motion.div
-              className="h-3 rounded-full"
+              className="duo-progress-fill"
               initial={{ width: 0 }}
               animate={{ width: `${(completedCount / module.milestones.length) * 100}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -85,168 +99,205 @@ export default function LearnTree() {
         </div>
       </motion.div>
 
-      {/* Unit Sections */}
-      {unitIds.map((unitId) => {
+      {/* Section / Unit Path */}
+      {unitIds.map((unitId, unitIndex) => {
         const milestones = unitGroups[unitId];
         const unitCompleted = milestones.every(m => m.completed);
         const unitProgress = milestones.filter(m => m.completed).length;
         const isExpanded = expandedUnit === unitId || unitProgress > 0;
         const unitColor = unitColors[unitId] || module.color;
         const unitBg = unitBgColors[unitId] || '#d7ffb8';
+        const isFirstUnit = unitIndex === 0;
 
         return (
-          <div key={unitId} className="w-full max-w-sm mb-4">
-            {/* Unit Header */}
+          <div key={unitId} className="w-full max-w-sm mb-6">
+            {/* Section Start Banner */}
+            {!isFirstUnit && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center justify-center mb-4 py-2"
+              >
+                <div className="h-px flex-1" style={{ backgroundColor: 'var(--gray-200)' }} />
+                <div className="mx-3 px-4 py-2 rounded-full text-xs font-extrabold uppercase" style={{ backgroundColor: unitBg, color: unitColor }}>
+                  <Flag size={12} className="inline mr-1" /> Section {unitIndex + 1}
+                </div>
+                <div className="h-px flex-1" style={{ backgroundColor: 'var(--gray-200)' }} />
+              </motion.div>
+            )}
+
+            {/* Unit Header - Collapsible */}
             <button
               onClick={() => setExpandedUnit(isExpanded ? '' : unitId)}
-              className="w-full flex items-center gap-3 p-3 rounded-2xl border-b-4 transition-all mb-3"
+              className="w-full duo-unit-banner mb-4"
               style={{
                 backgroundColor: unitBg,
                 borderColor: unitColor,
               }}
             >
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
                 style={{ backgroundColor: unitColor }}
               >
-                {unitCompleted ? <Crown size={18} /> : <Star size={18} />}
+                {unitCompleted ? <Trophy size={22} /> : <Star size={22} />}
               </div>
               <div className="flex-1 text-left">
-                <div className="text-sm font-bold" style={{ color: unitColor }}>
+                <div className="text-base font-extrabold" style={{ color: unitColor }}>
                   {unitNames[unitId] || unitId}
                 </div>
-                <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                <div className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
                   {unitProgress}/{milestones.length} completed
                 </div>
               </div>
               <ChevronDown
-                size={16}
-                style={{ color: unitColor, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+                size={20}
+                className="transition-transform duration-300"
+                style={{ color: unitColor, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
               />
             </button>
 
-            {/* Duolingo Winding Path */}
+            {/* Floating Path with Nodes */}
             {isExpanded && (
-              <div className="relative flex flex-col items-center gap-1 px-2">
-                {/* SVG path connecting milestones */}
-                <svg
-                  className="absolute top-0 left-0 w-full h-full z-0 pointer-events-none"
-                  style={{ overflow: 'visible' }}
-                >
-                  {milestones.map((_, idx) => {
-                    if (idx === 0) return null;
-                    const prevCompleted = milestones[idx - 1].completed;
-                    // Row and column positions
-                    const row = Math.floor((idx - 1) / 3);
-                    const prevRow = Math.floor((idx - 2) / 3);
-                    const col = (idx - 1) % 3;
-                    const prevCol = (idx - 2) % 3;
-                    // Adjust for zigzag
-                    const effectiveCol = row % 2 === 0 ? col : 2 - col;
-                    const prevEffectiveCol = prevRow % 2 === 0 ? prevCol : 2 - prevCol;
+              <div className="relative flex flex-col items-center px-2 pb-4">
+                {/* Background path line - the "road" */}
+                <div className="absolute top-0 bottom-0 w-1.5 rounded-full" style={{ backgroundColor: 'var(--gray-200)', left: '50%', transform: 'translateX(-50%)' }} />
+                
+                {/* Active path segment */}
+                <div 
+                  className="absolute top-0 w-1.5 rounded-full transition-all duration-1000"
+                  style={{
+                    backgroundColor: unitColor,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    height: `${(unitProgress / Math.max(milestones.length, 1)) * 100}%`,
+                    opacity: 0.6,
+                  }}
+                />
+
+                {/* Milestones - floating nodes */}
+                <div className="relative z-10 flex flex-col items-center gap-8 w-full">
+                  {milestones.map((milestone, idx) => {
+                    const status = milestone.completed ? 'completed' : milestone.locked ? 'locked' : 'available';
+                    const isNext = !milestone.completed && !milestone.locked;
+                    const globalIdx = module.milestones.findIndex(m => m.id === milestone.id);
                     
-                    const x1 = (prevEffectiveCol + 0.5) * (100 / 3);
-                    const y1 = (prevRow + 1) * 80;
-                    const x2 = (effectiveCol + 0.5) * (100 / 3);
-                    const y2 = (row + 1) * 80;
-                    
+                    // Alternate left/right positioning like Duolingo
+                    const isLeft = idx % 2 === 0;
+                    const decoration = floatingDecorations[idx % floatingDecorations.length];
+                    const DecoIcon = decoration.icon;
+
                     return (
-                      <line
-                        key={`path-${idx}`}
-                        x1={`${x1}%`}
-                        y1={y1}
-                        x2={`${x2}%`}
-                        y2={y2}
-                        stroke={prevCompleted ? unitColor : 'var(--border-color)'}
-                        strokeWidth="3"
-                        strokeDasharray={prevCompleted ? "0" : "6,4"}
-                        strokeLinecap="round"
-                      />
+                      <motion.div
+                        key={milestone.id}
+                        initial={{ opacity: 0, scale: 0.5, x: isLeft ? -30 : 30 }}
+                        animate={{ opacity: 1, scale: 1, x: 0 }}
+                        transition={{ delay: globalIdx * 0.06, type: 'spring', stiffness: 300, damping: 20 }}
+                        className="relative flex items-center w-full"
+                        style={{ justifyContent: isLeft ? 'flex-start' : 'flex-end', paddingLeft: isLeft ? '20px' : '0', paddingRight: isLeft ? '0' : '20px' }}
+                      >
+                        {/* Floating decoration */}
+                        <motion.div
+                          animate={{ y: [0, -6, 0], rotate: [0, 5, -5, 0] }}
+                          transition={{ repeat: Infinity, duration: 3 + idx * 0.5, ease: 'easeInOut' }}
+                          className="absolute z-0"
+                          style={{
+                            left: isLeft ? `${decoration.offset.x + 80}px` : 'auto',
+                            right: isLeft ? 'auto' : `${decoration.offset.x + 80}px`,
+                            top: decoration.offset.y,
+                            color: decoration.color,
+                            opacity: 0.4,
+                          }}
+                        >
+                          <DecoIcon size={decoration.size} />
+                        </motion.div>
+
+                        {/* Node + Label */}
+                        <div className={`flex items-center gap-3 ${isLeft ? 'flex-row' : 'flex-row-reverse'}`}>
+                          {/* Label */}
+                          <div className={`text-right ${isLeft ? 'text-right' : 'text-left'}`}>
+                            <div className="text-sm font-extrabold" style={{ color: 'var(--text-primary)' }}>
+                              {milestone.title}
+                            </div>
+                            {milestone.completed && (
+                              <div className="text-xs font-bold mt-0.5" style={{ color: unitColor }}>
+                                Completed
+                              </div>
+                            )}
+                            {isNext && (
+                              <div className="text-xs font-bold mt-0.5 animate-pulse" style={{ color: unitColor }}>
+                                Start!
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Node Button */}
+                          <motion.button
+                            onClick={() => {
+                              if (status !== 'locked') {
+                                if (allCompleted && milestone.completed) {
+                                  setShowComplete(milestone.id);
+                                } else {
+                                  startQuiz(milestone.id);
+                                }
+                              }
+                            }}
+                            whileHover={status !== 'locked' ? { scale: 1.12 } : {}}
+                            whileTap={status !== 'locked' ? { scale: 0.92 } : {}}
+                            className="relative flex items-center justify-center rounded-full transition-all duration-200 shadow-lg"
+                            style={{
+                              width: '72px',
+                              height: '72px',
+                              backgroundColor: status === 'completed' ? unitColor : status === 'locked' ? 'var(--gray-300)' : '#fff',
+                              cursor: status === 'locked' ? 'not-allowed' : 'pointer',
+                              opacity: status === 'locked' ? 0.5 : 1,
+                              border: status === 'completed' ? `4px solid ${unitColor}` : status === 'available' ? `4px solid ${unitColor}` : '4px solid var(--gray-300)',
+                              boxShadow: isNext
+                                ? `0 0 0 8px ${unitColor}20, 0 8px 24px ${unitColor}30`
+                                : status === 'completed'
+                                ? `0 4px 16px ${unitColor}40`
+                                : '0 4px 12px rgba(0,0,0,0.08)',
+                            }}
+                          >
+                            {status === 'completed' && (
+                              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
+                                <Check size={32} color="#fff" strokeWidth={4} />
+                              </motion.div>
+                            )}
+                            {status === 'locked' && <Lock size={24} color="#fff" />}
+                            {status === 'available' && (
+                              <div className="flex flex-col items-center">
+                                <Star size={28} color={unitColor} fill={unitColor} />
+                                {isNext && (
+                                  <motion.div
+                                    animate={{ scale: [1, 1.4, 1] }}
+                                    transition={{ repeat: Infinity, duration: 1.2 }}
+                                    className="absolute -top-2 -right-2"
+                                  >
+                                    <Sparkles size={18} color="var(--yellow)" fill="var(--yellow)" />
+                                  </motion.div>
+                                )}
+                              </div>
+                            )}
+                          </motion.button>
+                        </div>
+                      </motion.div>
                     );
                   })}
-                </svg>
+                </div>
 
-                {/* Milestones arranged in grid rows */}
-                {(() => {
-                  const rows: typeof milestones[] = [];
-                  for (let i = 0; i < milestones.length; i += 3) {
-                    rows.push(milestones.slice(i, i + 3));
-                  }
-                  return rows.map((row, rowIdx) => (
-                    <div
-                      key={rowIdx}
-                      className="grid grid-cols-3 gap-0 w-full z-10"
-                      style={{ direction: rowIdx % 2 === 0 ? 'ltr' : 'rtl' }}
-                    >
-                      {row.map((milestone) => {
-                        const status = milestone.completed ? 'completed' : milestone.locked ? 'locked' : 'available';
-                        const isNext = !milestone.completed && !milestone.locked;
-                        const globalIdx = module.milestones.findIndex(m => m.id === milestone.id);
-                        return (
-                          <motion.div
-                            key={milestone.id}
-                            initial={{ opacity: 0, scale: 0.5 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: globalIdx * 0.05, type: 'spring', stiffness: 300 }}
-                            className="flex flex-col items-center py-3"
-                            style={{ direction: 'ltr' }}
-                          >
-                            <button
-                              onClick={() => {
-                                if (status !== 'locked') {
-                                  if (allCompleted && milestone.completed) {
-                                    setShowComplete(milestone.id);
-                                  } else {
-                                    startQuiz(milestone.id);
-                                  }
-                                }
-                              }}
-                              className="relative flex items-center justify-center rounded-full transition-all duration-200"
-                              style={{
-                                width: '64px',
-                                height: '64px',
-                                backgroundColor: status === 'completed' ? unitColor : status === 'locked' ? 'var(--border-color)' : '#fff',
-                                cursor: status === 'locked' ? 'not-allowed' : 'pointer',
-                                opacity: status === 'locked' ? 0.5 : 1,
-                                border: status === 'completed' ? 'none' : status === 'available' ? `3px solid ${unitColor}` : '3px solid var(--border-color)',
-                                boxShadow: isNext ? `0 0 0 6px ${unitColor}25` : 'none',
-                              }}
-                            >
-                              {status === 'completed' && (
-                                <Check size={28} color="#fff" strokeWidth={3} />
-                              )}
-                              {status === 'locked' && <Lock size={22} color="#fff" />}
-                              {status === 'available' && (
-                                <div className="flex flex-col items-center">
-                                  <Star size={28} color={unitColor} fill={unitColor} />
-                                  {isNext && (
-                                    <motion.div
-                                      animate={{ scale: [1, 1.3, 1] }}
-                                      transition={{ repeat: Infinity, duration: 1.5 }}
-                                      className="absolute -top-1 -right-1"
-                                    >
-                                      <Sparkles size={14} color="var(--accent-yellow)" fill="var(--accent-yellow)" />
-                                    </motion.div>
-                                  )}
-                                </div>
-                              )}
-                            </button>
-                            <div className="text-center mt-2 max-w-[80px]">
-                              <div className="text-[11px] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
-                                {milestone.title}
-                              </div>
-                              {milestone.completed && (
-                                <div className="text-[10px] font-bold mt-0.5" style={{ color: unitColor }}>
-                                  Completed
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  ));
-                })()}
+                {/* Section Complete Trophy */}
+                {unitCompleted && (
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', delay: 0.3 }}
+                    className="mt-6 mb-2 flex items-center gap-2 px-5 py-3 rounded-2xl font-extrabold text-sm"
+                    style={{ backgroundColor: unitBg, color: unitColor, border: `2px solid ${unitColor}` }}
+                  >
+                    <Trophy size={20} />
+                    Section Complete!
+                  </motion.div>
+                )}
               </div>
             )}
           </div>
@@ -255,16 +306,21 @@ export default function LearnTree() {
 
       {/* Module Complete Banner */}
       {allCompleted && (
-        <motion.button
+        <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', duration: 0.5 }}
-          onClick={() => setShowComplete('module')}
-          className="mt-6 duo-btn duo-btn-green px-8 h-14 text-sm"
+          className="mt-8 flex flex-col items-center"
         >
-          <Crown size={20} className="mr-2" fill="#fff" />
-          Complete Module & Expand!
-        </motion.button>
+          <div className="text-4xl mb-3">🏆</div>
+          <button
+            onClick={() => setShowComplete('module')}
+            className="duo-btn duo-btn-green px-10 h-16 text-base font-extrabold"
+          >
+            <Crown size={24} className="mr-2" fill="#fff" />
+            Complete Module & Expand!
+          </button>
+        </motion.div>
       )}
 
       {showComplete && (

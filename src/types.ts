@@ -69,6 +69,7 @@ export interface AppState {
   modules: LearningModule[];
   gems: number;
   crowns: number;
+  hearts: number;
   completedAnswers: string[];
   weakSpots: WeakSpot[];
   hasSeenOnboarding: boolean;

@@ -1,5 +1,5 @@
 import { useApp } from '../context/AppContext';
-import { Zap, Flame, Diamond, Crown, ChevronRight, Target, Trophy, BookOpen, Dumbbell } from 'lucide-react';
+import { Zap, Flame, Diamond, Crown, ChevronRight, Target, Trophy, BookOpen, Dumbbell, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function RightSidebar() {
@@ -94,6 +94,22 @@ export default function RightSidebar() {
             </div>
           </div>
         </motion.div>
+      </div>
+
+      {/* Hearts bar - Duolingo style */}
+      <div className="mb-5 p-3 rounded-xl border-b-2" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Heart size={16} fill="var(--red)" color="var(--red)" />
+            <span className="text-xs font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Hearts</span>
+          </div>
+          <span className="text-sm font-extrabold" style={{ color: 'var(--red)' }}>{state.hearts}/5</span>
+        </div>
+        <div className="flex gap-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex-1 h-2.5 rounded-full transition-all duration-300" style={{ backgroundColor: i < state.hearts ? 'var(--red)' : 'var(--gray-200)' }} />
+          ))}
+        </div>
       </div>
 
       {/* Level Progress */}
